@@ -1,0 +1,11 @@
+/include/linux/sched.h
+	24.09.2017
+		++ (1468) int myFlag;
+
+/include/linux/init_task.h
+	24.09.2017
+		++ (218) .myFlag = 0,  \
+
+/kernel/fork.c
+	24.09.2017
+		++ (1309) p->myFlag = 0;

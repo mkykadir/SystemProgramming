@@ -1,0 +1,4 @@
+kernel/arch/x86/crypto/aes-i586.ko
+kernel/arch/x86/kernel/msr.ko
+kernel/arch/x86/kernel/cpuid.ko
+kernel/arch/x86/kernel/microcode.ko

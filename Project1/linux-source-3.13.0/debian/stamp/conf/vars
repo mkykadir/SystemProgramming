@@ -1,0 +1,29 @@
+This is kernel package version 12.036+nmu3.
+VERSION		= 3
+PATCHLEVEL	= 13
+SUBLEVEL		= 11
+EXTRAVERSION	= -ckt39
+APPEND_TO_VERSION = -custom
+KPKG_SELECTED_MODULES = 
+Debian Revision	= 3.13.11-ckt39-custom-10.00.Custom
+KPKG_ARCH	= 
+ARCH             = i386
+HOSTCC           = gcc
+HOSTCFLAGS       = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer -std=gnu89
+CROSS_COMPILE    = 
+AS               = as
+LD               = ld
+CC               = gcc
+CPP              = gcc -E
+AR               = ar
+NM               = nm
+STRIP            = strip
+OBJCOPY          = objcopy
+OBJDUMP          = objdump
+MAKE             = /usr/bin/make
+GENKSYMS         = scripts/genksyms/genksyms
+CFLAGS           = 
+AFLAGS           = 
+MODFLAGS         = 
+do_parallel	= 
+fast_dep		= 

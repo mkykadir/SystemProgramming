@@ -1,0 +1,1 @@
+cmd_net/ipv4/netfilter/nf_nat_ipv4.ko := ld -r -m elf_i386 -T /home/mkytr/Desktop/Project1/linux-source-3.13.0/scripts/module-common.lds --build-id  -o net/ipv4/netfilter/nf_nat_ipv4.ko net/ipv4/netfilter/nf_nat_ipv4.o net/ipv4/netfilter/nf_nat_ipv4.mod.o

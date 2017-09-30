@@ -1,1 +1,0 @@
-cmd_net/netfilter/nf_nat_sip.ko := ld -r -m elf_i386 -T /home/mkytr/Desktop/Project1/linux-source-3.13.0/scripts/module-common.lds --build-id  -o net/netfilter/nf_nat_sip.ko net/netfilter/nf_nat_sip.o net/netfilter/nf_nat_sip.mod.o

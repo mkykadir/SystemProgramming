@@ -1,1 +1,0 @@
-cmd_net/ipv4/netfilter/built-in.o :=  ld -m elf_i386   -r -o net/ipv4/netfilter/built-in.o net/ipv4/netfilter/nf_conntrack_ipv4.o net/ipv4/netfilter/nf_defrag_ipv4.o net/ipv4/netfilter/ip_tables.o net/ipv4/netfilter/iptable_filter.o net/ipv4/netfilter/iptable_mangle.o net/ipv4/netfilter/ipt_REJECT.o net/ipv4/netfilter/ipt_ULOG.o 

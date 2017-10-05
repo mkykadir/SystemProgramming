@@ -709,26 +709,17 @@ void do_exit(long code)
 
 	// Get nice value of current process
 	int niceValue = task_nice(tsk);
-	printk(KERN_ALERT "DEBUG: Mypid is %d Flag is %d\n", tsk->pid, tsk->myFlag);
 
 	if(niceValue > 10 && tsk->myFlag == 1){
-		printk(KERN_ALERT "DEBUG C: exit function should perform different!\n");
 		struct task_struct *myTaskStruct;
 		struct list_head *myList;
-		read_lock(&tasklist_lock); // Lock the task list for new forks
+		read_lock(&tasklist_lock); // Lock the task list for new forks (sem)
 		list_for_each(myList, &tsk->children){ // Getting children list of task
 			myTaskStruct = list_entry(myList, struct task_struct, sibling); // Sibling of a child is children of parent's
-			printk(KERN_ALERT "DEBUG C: Mypid is %d Flag is %d\n", myTaskStruct->pid, myTaskStruct->myFlag);
-			
-			
-			//kill(myTaskStruct->pid, SIGKILL);
-		
-			sys_kill(myTaskStruct->pid, SIGKILL);
+			sys_kill(myTaskStruct->pid, SIGKILL); // Kill signal sent
 		}
-		read_unlock(&tasklist_lock); // Unlock the task list
+		read_unlock(&tasklist_lock); // Unlock the task list (sem)
 	}
-	
-
 
 	profile_task_exit(tsk);
 

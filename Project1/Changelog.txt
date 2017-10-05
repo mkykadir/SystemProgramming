@@ -1,0 +1,51 @@
+1-- "myflag" folder created under folder "linux-source-3.13.0"
+
+2-- "myflag.c" file created under "linux-source-3.13.0/myflag"
+
+3-- "Makefile" file created under "linux-source-3.13.0/myflag"
+
+4-- "Makefile" file under "linux-source-3.13.0" updated
+	Modifies:
+		< core-y		:= usr/ myflag/
+		---
+		> core-y		:= usr/
+
+5-- "syscall_32.tbl" file under "linux-source-3.13.0/arch/x86/syscalls/syscall_32.tbl" updated
+	Modifies:
+		< 355	i386	set_myFlag		sys_set_myFlag
+
+6-- "syscalls.h" file under "linux-source-3.13.0/include/linux" updated
+	Modifies:
+		< asmlinkage long sys_set_myFlag(pid_t pid, int flag);
+
+7-- "fork.c" file under "linux-source-3.13.0/kernel" updated
+	Modifies:
+		< 	p->myFlag = 0;
+		---
+		> 
+
+8-- "sched.h" file under "linux-source-3.13.0/include/linux" updated
+	Modifies:
+		< 	int myFlag;
+
+9-- "init_task.h" file under "linux-source-3.13.0/include/linux" updated
+	Modifies:
+		< 	.myFlag = 0,	\
+
+10-- "exit.c" file under "linux-source-3.13.0/kernel" updated
+	Modifies:
+		< 
+		< 	// Get nice value of current process
+		< 	int niceValue = task_nice(tsk);
+		< 
+		< 	if(niceValue > 10 && tsk->myFlag == 1){
+		< 		struct task_struct *myTaskStruct;
+		< 		struct list_head *myList;
+		< 		read_lock(&tasklist_lock); // Lock the task list for new forks (sem)
+		< 		list_for_each(myList, &tsk->children){ // Getting children list of task
+		< 			myTaskStruct = list_entry(myList, struct task_struct, sibling); // Sibling of a child is children of parent's
+		< 			sys_kill(myTaskStruct->pid, SIGKILL); // Kill signal sent
+		< 		}
+		< 		read_unlock(&tasklist_lock); // Unlock the task list (sem)
+		< 	}
+

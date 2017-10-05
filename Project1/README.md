@@ -1,7 +1,9 @@
 # Project1
 
 Projenin detaylı anlatımı ve istenilenleri görmek için 
+
     project1-kernel-2017.pdf 
+
 dosyasını inceleyiniz.
 
 ## Özet
@@ -11,5 +13,7 @@ Bu projede Linux çekirdek kodunun güncellenerek her işlem için yalnızca 0 v
 ## Testler
 
 Proje için gereken testler
+
     tests/
+
 klasörü altında sunulmuştur. Testler hakkında detaylı bilgi için klasör içindeki yardıma bakınız.

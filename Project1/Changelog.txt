@@ -49,3 +49,9 @@
 		< 		read_unlock(&tasklist_lock); // Unlock the task list (sem)
 		< 	}
 
+11- "head_32.S" file under "linux-source-3.13.0/arch/x86/boot/compressed" updated
+	Modifies:
+		< #ifdef CONFIG_EFI_STUB
+		< 
+		238d235
+		< #endif

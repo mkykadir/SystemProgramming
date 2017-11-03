@@ -1,0 +1,1 @@
+cmd_/home/mkytr/Desktop/sysprog/Project2/driver.ko := ld -r -m elf_i386 -T ./scripts/module-common.lds --build-id  -o /home/mkytr/Desktop/sysprog/Project2/driver.ko /home/mkytr/Desktop/sysprog/Project2/driver.o /home/mkytr/Desktop/sysprog/Project2/driver.mod.o

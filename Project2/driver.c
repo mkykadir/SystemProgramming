@@ -152,25 +152,25 @@ ssize_t device_read(struct file *filp, char __user *buf, size_t count,
 	
 	int user_id = get_current_user()->uid.val;
 	// read mode check yap
-	struct user_message *temp = dev->head;
+	// struct user_message *temp = dev->head;
 	while(return_size == 0){
 		if(temp_message == NULL){
 			printk("Temp message is null\n");
 			temp_message = dev->head;
 			break;
 		}
-		if(temp->toUser == user_id){
-			if(read_mode == 0 && temp->read == 1){
+		if(temp_message->toUser == user_id){
+			if(read_mode == 0 && temp_message->read == 1){
 				printk("Read message is only unread mode\n");
-				temp = temp->next;
+				// temp = temp->next;
 				temp_message = temp_message->next;
 				continue;
 			}
 			int user_id_length = 0;
 			printk("Converting id to char\n");
-			char* user_id = int_2_char(temp->fromUser, &user_id_length);
+			char* user_id = int_2_char(temp_message->fromUser, &user_id_length);
 			printk("Id in char %s\n", user_id);
-			int return_msg_length = user_id_length + temp->length + 3;
+			int return_msg_length = user_id_length + temp_message->length + 3;
 			char* return_msg = kmalloc(return_msg_length * sizeof(char), GFP_KERNEL);
 			int i;
 			for(i = 0; i < user_id_length; i++){
@@ -181,7 +181,7 @@ ssize_t device_read(struct file *filp, char __user *buf, size_t count,
 			printk("i value is %d\n", i);
 			int j = 0;
 			while(i < return_msg_length){
-				return_msg[i++] = temp->messageContent[j++];
+				return_msg[i++] = temp_message->messageContent[j++];
 			}
 			return_msg[return_msg_length - 2] = '\n';
 			return_msg[return_msg_length - 1] = '\0';
@@ -192,9 +192,9 @@ ssize_t device_read(struct file *filp, char __user *buf, size_t count,
 				return -EFAULT;
 			}
 			printk("Message printed on users screen\n");
-			temp->read = 1;
+			temp_message->read = 1;
 		}
-		temp = temp->next;
+		// temp = temp->next;
 		temp_message = temp_message->next;
 	}
 	up(&dev->sem);

@@ -33,6 +33,7 @@ int unread_limit = UNREAD_LIMIT;
 // int unread_limit = 10;
 
 // May be module parameter!
+module_param(unread_limit, int, S_IRUGO);
 
 MODULE_AUTHOR("Muhammed Kadir Yücel, Mahmut Lutfullah Özbilen");
 MODULE_LICENSE("ITU/ce");
@@ -275,6 +276,22 @@ ssize_t device_write(struct file *filp, const char __user *buf, size_t count,
 		
 		incomeMessage->toUser = char_2_int(dest_username, username_length);
 		printk("Id converted to int %d\n", incomeMessage->toUser);
+		
+		struct user_message *unread_check = dev->head;
+		int unread_counter = 0;
+		while(unread_check != NULL){
+			if(unread_check->toUser == incomeMessage->toUser && unread_check->read == 0)
+				unread_counter++;
+				
+			unread_check = unread_check->next;
+		}
+		if(unread_counter >= unread_limit){
+			printk("Too many unread messages for user %d\n", incomeMessage->toUser);
+			kfree(incomeMessage);
+			up(&dev->sem);
+			return -ENOSPC;
+		}		
+		
 		// message is at ' '
 		message++;
 		incomeMessage->length = count - username_length - 2;

@@ -348,7 +348,7 @@ long device_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			printk("GOT UNREAD_LIMIT %d\n", unread_limit);
 			break;
 		case CLEAR_MESSAGE_OF:
-			/*int user_id = (int) arg;
+			int user_id = (int) arg;
 			printk("GOT USER_ID %d\n", user_id);
 			
 			struct device_dev *dev = filp->private_data;
@@ -381,8 +381,10 @@ long device_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 				
 				del_temp = prev->next;
 			}
-			*/
+			
 			break;
+		default:
+			return -EINVAL;
 	}
 	
 	printk(KERN_INFO "IOCTL Region exit\n");

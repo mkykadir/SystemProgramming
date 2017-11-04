@@ -121,6 +121,9 @@ int device_open(struct inode *inode, struct file *filp){
 	dev = container_of(inode->i_cdev, struct device_dev, cdev);
 	filp->private_data = dev;
 	
+	if(temp_message == NULL)
+		temp_message = dev->head;
+	
 	return 0;
 }
 

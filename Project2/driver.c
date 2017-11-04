@@ -28,74 +28,66 @@
 int device_major = DEVICE_MAJOR;
 int device_minor = 0;
 int read_mode = READ_MODE; // 0 = Just unread, 1 = include read
-int device_nr_devs = DEVICE_NR_DEVS;
-int unread_limit = UNREAD_LIMIT;
-// int unread_limit = 10;
+int device_nr_devs = DEVICE_NR_DEVS; // number of devices
+int unread_limit = UNREAD_LIMIT; // unread limit for one user
 
-// May be module parameter!
-module_param(unread_limit, int, S_IRUGO);
+module_param(unread_limit, int, S_IRUGO); // unread_limit as module parameter
 
-MODULE_AUTHOR("Muhammed Kadir Yücel, Mahmut Lutfullah Özbilen");
+MODULE_AUTHOR("Muhammed Kadir Yucel, Mahmut Lutfullah Ozbilen");
 MODULE_LICENSE("ITU/ce");
 
-struct user_message {
-	int fromUser;
-	int toUser;
-	char *messageContent;
-	size_t length;
-	int read;
-	struct user_message *next;
+struct user_message { // linked list struct to hold user message
+	int fromUser; // user id of message sender
+	int toUser; // user id of message receiver
+	char *messageContent; // content of message
+	size_t length; // length of the messsage
+	int read; // if message is read
+	struct user_message *next; // linked list!
 };
 
-struct device_dev {
-	// message struct array
-	struct user_message *head;
-	struct semaphore sem;
-	struct cdev cdev;
+struct device_dev { // struct for device
+	struct user_message *head; // head of the linked list
+	struct semaphore sem; // we need to lock the device 
+	struct cdev cdev; // character device :)
 };
 
-struct device_dev *devices;
-struct user_message *temp_message;
+struct device_dev *devices; // devices array
+struct user_message *temp_message; // temp message pointer for device_read operation
 
-int char_2_int(char* uid, int size){
-	int i,j,k,tmp_exp;
+int char_to_int(char* uid, int size){ // convert char input to integer
+	int ia;
+	int ib;
+	ib = 0;
+	int ic;
+	int tmp_exp;
 	int returnNumber = 0;
 	char *tmp;
-	j=0;
-	for(i=size-1; i >= 0; --i){
-		tmp = uid+i;
+	for(ia = size-1; ia >= 0; --ia){
+		tmp = uid+ia;
 		tmp_exp = 1;
-
-		for(k=0;k<j;k++){//c de ust ifadesi yok!
+		for(ic = 0; ic < ib; ic++){
 			tmp_exp = tmp_exp * 10;
 		}
-
 		returnNumber += tmp_exp * ( *tmp - 48);
-
-		j = j+1;
+		ib = ib+1;
 	}
-	
 	return returnNumber;
 }
 
-char* int_2_char (int uid, int* size){
-	
+char* int_to_char (int uid, int* size){ // convert interger to char
 	int tmp,i;
 	char *c;
-	if(uid == 0){ //root check
+	if(uid == 0){
 		(*size) = 1;
 		c = kmalloc(1*sizeof(char), GFP_KERNEL );
 		c[0] = '0';
 		return c;
 	}
-
 	tmp = uid;
 	while(tmp > 0){ 
 		tmp = tmp/10;
 		(*size)++;
 	}
-
-
 	c = kmalloc((*size)*sizeof(char), GFP_KERNEL );
 	tmp = uid;
 	i = (*size);
@@ -106,16 +98,25 @@ char* int_2_char (int uid, int* size){
 		uid = uid/10;
 		i--;
 	}
-
 	return c;
 }
 
-int device_trim(struct device_dev *dev){
+int device_trim(struct device_dev *dev){ // free-up memory
 	printk(KERN_INFO "Trim region\n");
+	
+	struct user_message *temp = dev->head;
+	struct user_message *toDelete;
+	while(temp != NULL){
+		toDelete = temp;
+		temp = temp->next;
+		kfree(toDelete->messageContent);
+		kfree(toDelete);
+	}
+	printk(KERN_INFO "Trim region exit\n");
 	return 0;
 }
 
-int device_open(struct inode *inode, struct file *filp){
+int device_open(struct inode *inode, struct file *filp){ // open device
 	printk(KERN_INFO "Open region\n");
 	struct device_dev *dev;
 	dev = container_of(inode->i_cdev, struct device_dev, cdev);
@@ -127,7 +128,7 @@ int device_open(struct inode *inode, struct file *filp){
 	return 0;
 }
 
-int device_release(struct inode *inode, struct file *filp){
+int device_release(struct inode *inode, struct file *filp){ // release device
 	printk(KERN_INFO "Release region\n");
 	return 0;
 }
@@ -139,38 +140,34 @@ ssize_t device_read(struct file *filp, char __user *buf, size_t count,
 	struct device_dev *dev = filp->private_data;
 	size_t return_size = 0;
 	
-	if(down_interruptible(&dev->sem))
+	if(down_interruptible(&dev->sem)) // semaphore check
 		return -ERESTARTSYS;
 	
-	printk("Got semaphore\n");
+	printk(KERN_INFO "Got semaphore\n");
 	if(dev->head == NULL){
-		// mesaj yok!
 		printk("No message in device!!\n");
 		up(&dev->sem);
 		return 0;
 	}
 	
 	int user_id = get_current_user()->uid.val;
-	// read mode check yap
-	// struct user_message *temp = dev->head;
 	while(return_size == 0){
 		if(temp_message == NULL){
 			printk("Temp message is null\n");
 			temp_message = dev->head;
 			break;
 		}
-		if(temp_message->toUser == user_id){
-			if(read_mode == 0 && temp_message->read == 1){
+		if(temp_message->toUser == user_id){ // if message belongs to user
+			if(read_mode == 0 && temp_message->read == 1){ // EXCLUDE_READ and read message
 				printk("Read message is only unread mode\n");
-				// temp = temp->next;
 				temp_message = temp_message->next;
 				continue;
 			}
 			int user_id_length = 0;
 			printk("Converting id to char\n");
-			char* user_id = int_2_char(temp_message->fromUser, &user_id_length);
+			char* user_id = int_to_char(temp_message->fromUser, &user_id_length);
 			printk("Id in char %s\n", user_id);
-			int return_msg_length = user_id_length + temp_message->length + 3;
+			int return_msg_length = user_id_length + temp_message->length + 3; // id length, message length and ': ...\0'
 			char* return_msg = kmalloc(return_msg_length * sizeof(char), GFP_KERNEL);
 			int i;
 			for(i = 0; i < user_id_length; i++){
@@ -187,17 +184,17 @@ ssize_t device_read(struct file *filp, char __user *buf, size_t count,
 			return_msg[return_msg_length - 1] = '\0';
 			
 			return_size = return_msg_length;
-			if(copy_to_user(buf, return_msg, return_msg_length)){
+			if(copy_to_user(buf, return_msg, return_msg_length)){ // send to user
 				up(&dev->sem);
 				return -EFAULT;
 			}
 			printk("Message printed on users screen\n");
 			temp_message->read = 1;
 		}
-		// temp = temp->next;
 		temp_message = temp_message->next;
 	}
 	up(&dev->sem);
+	printk(KERN_INFO "Read region end with %d\n", return_size);
 	return return_size;
 }
 
@@ -210,7 +207,6 @@ ssize_t device_write(struct file *filp, const char __user *buf, size_t count,
 		
 		if(down_interruptible(&dev->sem))
 			return -ERESTARTSYS;
-		
 		
 		struct user_message *incomeMessage;
 		incomeMessage = kmalloc(sizeof(struct user_message), GFP_KERNEL);
@@ -272,14 +268,11 @@ ssize_t device_write(struct file *filp, const char __user *buf, size_t count,
 			dest_username[i] = *message;
 			message++;
 		}
-		// printk("Destination username is %s\n", dest_username);
 		
-		// get user id from username
-		// check for user id
-		
-		incomeMessage->toUser = char_2_int(dest_username, username_length);
+		incomeMessage->toUser = char_to_int(dest_username, username_length);
 		printk("Id converted to int %d\n", incomeMessage->toUser);
 		
+		// check for unread messages count for user
 		struct user_message *unread_check = dev->head;
 		int unread_counter = 0;
 		while(unread_check != NULL){
@@ -326,8 +319,7 @@ ssize_t device_write(struct file *filp, const char __user *buf, size_t count,
 				
 			temporary->next = incomeMessage;
 		}
-		
-		
+
 		temp_message = dev->head;
 			
 		up(&dev->sem);
@@ -376,7 +368,10 @@ long device_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 					del_temp = del_temp->next;
 				}
 				
-				if(del_temp == NULL) return 0;
+				if(del_temp == NULL){
+					up(&dev->sem);
+					 return 0;
+				}
 				prev->next = del_temp->next;
 				if(del_temp->messageContent != NULL)
 					kfree(del_temp->messageContent);
@@ -384,6 +379,7 @@ long device_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 				
 				del_temp = prev->next;
 			}
+			up(&dev->sem);
 			
 			break;
 		default:
@@ -412,13 +408,13 @@ void device_exit_module(void)
 	if(devices){
 		printk(KERN_INFO "Cleaning devices\n");
 		for(i = 0; i < device_nr_devs; i++){
-			device_trim(devices + i);
+			device_trim(devices + i); // clean memory
 			cdev_del(&devices[i].cdev);
 		}
-		kfree(devices);
+		kfree(devices); // remove devices array
 	}
 	
-	unregister_chrdev_region(dev_no, device_nr_devs);		
+	unregister_chrdev_region(dev_no, device_nr_devs); // free numbers from system
 }
 
 int device_init_module(void)
@@ -427,7 +423,7 @@ int device_init_module(void)
 	int ret_val;
 	dev_t dev_no = 0;
 	
-	if(device_major){
+	if(device_major){ // get device major numbers
 		printk(KERN_INFO "Register region\n");
 		dev_no = MKDEV(device_major, device_minor);
 		ret_val = register_chrdev_region(dev_no, device_nr_devs, "mydevice");
@@ -454,7 +450,7 @@ int device_init_module(void)
 	struct device_dev *dev;
 	int i;
 	int error;
-	for(i = 0; i < device_nr_devs; i++){
+	for(i = 0; i < device_nr_devs; i++){ // create nr_devices
 		dev = &devices[i];
 		sema_init(&dev->sem, 1);
 		dev_no = MKDEV(device_major, device_minor + i);

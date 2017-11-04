@@ -337,7 +337,7 @@ long device_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if(!capable(CAP_SYS_ADMIN))
 		return -EPERM;
 
-	
+	int user_id;
 	switch(cmd){
 		case SET_READ_MODE:
 			read_mode = (int) arg;
@@ -347,8 +347,8 @@ long device_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			unread_limit = (int) arg;
 			printk("GOT UNREAD_LIMIT %d\n", unread_limit);
 			break;
-		case CLEAR_MESSAGE_OF:
-			int user_id = (int) arg;
+		case CLEAR_MESSAGE_OF:			
+			user_id = (int) arg;
 			printk("GOT USER_ID %d\n", user_id);
 			
 			struct device_dev *dev = filp->private_data;

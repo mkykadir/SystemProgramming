@@ -1,2 +1,9 @@
 # ignore compiled versions
 *.deb
+*.mod.*
+*.ko
+*.o
+*.symvers
+*.gch
+*.order
+bin

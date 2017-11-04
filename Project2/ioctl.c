@@ -6,6 +6,8 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 int main(int argc, char** argv){
 	
@@ -23,6 +25,20 @@ int main(int argc, char** argv){
 	int ret;
 	int op_code = atoi(argv[2]);
 	int arg = atoi(argv[3]);
+	
+	switch(op_code){
+		case 0:
+			op_code = SET_READ_MODE;
+			break;
+		case 1:
+			op_code = SET_UNREAD_LIMIT;
+			break;
+		case 2:
+			op_code = CLEAR_MESSAGE_OF;
+			break;
+		default:
+			break;		
+	}
 	
 	// right now we are taking user id
 	// if get username as char* we should convert it!

@@ -1,3 +1,13 @@
+/*
+ * 2017, İTÜ. System Programming Course
+ *  
+ * Project 2
+ * 
+ * 150140119 - Muhammed Kadir Yücel
+ * 150140123 - Mahmut Lutfullah Özbilen
+ * 
+ */
+
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -14,9 +24,11 @@
 #include <linux/cdev.h>
 #include <linux/sched.h>
 #include <linux/file.h> 
+#include <linux/buffer_head.h>
 
 #include <asm/switch_to.h>
 #include <asm/uaccess.h>
+#include <asm/segment.h>
 
 #include "driver_ioctl.h"
 
@@ -24,6 +36,7 @@
 #define READ_MODE 0
 #define DEVICE_NR_DEVS 4
 #define UNREAD_LIMIT 100
+#define BUF_SIZE 4096
 
 int device_major = DEVICE_MAJOR;
 int device_minor = 0;
@@ -54,26 +67,6 @@ struct device_dev { // struct for device
 struct device_dev *devices; // devices array
 struct user_message *temp_message; // temp message pointer for device_read operation
 
-int char_to_int(char* uid, int size){ // convert char input to integer
-	int ia;
-	int ib;
-	ib = 0;
-	int ic;
-	int tmp_exp;
-	int returnNumber = 0;
-	char *tmp;
-	for(ia = size-1; ia >= 0; --ia){
-		tmp = uid+ia;
-		tmp_exp = 1;
-		for(ic = 0; ic < ib; ic++){
-			tmp_exp = tmp_exp * 10;
-		}
-		returnNumber += tmp_exp * ( *tmp - 48);
-		ib = ib+1;
-	}
-	return returnNumber;
-}
-
 char* int_to_char (int uid, int* size){ // convert interger to char
 	int tmp,i;
 	char *c;
@@ -99,6 +92,142 @@ char* int_to_char (int uid, int* size){ // convert interger to char
 		i--;
 	}
 	return c;
+}
+
+int username_to_userid (char* username, int username_length){ // convert username to id
+	struct file *passwdFile = NULL;
+	
+	mm_segment_t old_fs;
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+	passwdFile = filp_open("/etc/passwd",O_RDONLY,0);
+	set_fs(old_fs);
+	
+	if(passwdFile == NULL){
+		printk(KERN_ALERT "Cannot open file\n");
+		return -1;
+	}
+	
+	char buffer[BUF_SIZE];
+	int i;
+	for(i=0;i<BUF_SIZE;i++)
+		buffer[i] = 0;
+	loff_t position = 0;
+
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+	vfs_read(passwdFile,buffer,BUF_SIZE,&position);
+	set_fs(old_fs);
+	filp_close(passwdFile,0);
+	
+	int found = 0;
+	int index = 0;
+	
+	while(index < BUF_SIZE && !found){
+		for(i = 0; i < username_length; i++){
+			found = 1;
+			if(username[i] != buffer[index + i]){
+					found = 0;
+					break;
+			}
+		}
+		if(!found){
+			while(buffer[index] != '\n' && index < BUF_SIZE)
+				index++;
+			if(index < BUF_SIZE)
+				index++;
+		}
+	}
+	if(found){
+		index = index + username_length + 3;
+		int uid = 0;
+		for(i = index; buffer[i] != ':'; i++){
+			uid = 10 * uid + buffer[i] - '0';
+		}
+		printk(KERN_INFO "uid is %d\n", uid);
+		return uid; 
+	}
+	else{
+		printk(KERN_ALERT "User cannot found\n");
+		return -1;
+	}
+}
+
+char* userid_to_username(char *uid, int* size, int uidSize){
+	struct file *passwdFile = NULL;
+	
+	mm_segment_t old_fs;
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+	passwdFile = filp_open("/etc/passwd",O_RDONLY,0);
+	set_fs(old_fs);
+	
+	if(passwdFile == NULL){
+		printk(KERN_ALERT "Cannot open file\n");
+		return -1;
+	}
+	
+	char buffer[BUF_SIZE];
+	int i;
+	for(i=0;i<BUF_SIZE;i++)
+		buffer[i] = 0;
+	loff_t position = 0;
+
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+	vfs_read(passwdFile,buffer,BUF_SIZE,&position);
+	set_fs(old_fs);
+	filp_close(passwdFile,0);
+	
+	int found = 0;
+	int index = 0;
+	int colonCounter = 0;
+	int lineCounter = 0;
+	int usernameSize = 0;
+	printk(KERN_INFO "Incoming uid is %s", uid);
+	while(index < BUF_SIZE && !found){
+		while(colonCounter < 2){
+			if(buffer[index] == ':')
+				colonCounter++;
+			if(colonCounter == 1){
+				usernameSize = lineCounter-1;
+			}
+			index++;
+			lineCounter++;
+		}
+		for(i = 0; i < uidSize; i++){
+			found = 1;
+			if(uid[i] != buffer[index + i]){
+					found = 0;
+					break;
+			}
+		}
+		if(!found){
+			while(buffer[index] != '\n' && index < BUF_SIZE){
+				index++;
+				lineCounter++;
+			}
+			if(index < BUF_SIZE)
+				index++;
+			lineCounter = 0;
+			colonCounter = 0;
+		}
+	}
+	if(found){
+		index = index - lineCounter;
+		(*size) = usernameSize;
+		char* username = kmalloc(usernameSize * sizeof(char), GFP_KERNEL);
+		for(i = 0; i < usernameSize; i++){
+			username[i] = buffer[index + i];
+		}
+		printk(KERN_INFO "username size is %d\n", usernameSize);
+		printk(KERN_INFO "username is %s\n", username);
+		return username; 
+	}
+	else{
+		printk(KERN_ALERT "User cannot found\n");
+		return NULL;
+	}
 }
 
 int device_trim(struct device_dev *dev){ // free-up memory
@@ -164,14 +293,20 @@ ssize_t device_read(struct file *filp, char __user *buf, size_t count,
 				continue;
 			}
 			int user_id_length = 0;
+			int username_length = 0;
 			printk("Converting id to char\n");
 			char* user_id = int_to_char(temp_message->fromUser, &user_id_length);
 			printk("Id in char %s\n", user_id);
-			int return_msg_length = user_id_length + temp_message->length + 3; // id length, message length and ': ...\0'
+			char* username = userid_to_username(user_id, &username_length, user_id_length);
+			if(username == NULL){
+				up(&dev->sem);
+				return -EINVAL;
+			}
+			int return_msg_length = username_length + temp_message->length + 3; // id length, message length and ': ...\0'
 			char* return_msg = kmalloc(return_msg_length * sizeof(char), GFP_KERNEL);
 			int i;
-			for(i = 0; i < user_id_length; i++){
-				return_msg[i] = user_id[i];
+			for(i = 0; i < username_length; i++){
+				return_msg[i] = username[i];
 			}
 			return_msg[i++] = ':';
 			return_msg[i++] = ' ';
@@ -243,9 +378,9 @@ ssize_t device_write(struct file *filp, const char __user *buf, size_t count,
 			return -EINVAL;
 		}
 		
-		char* dest_username;
 		char* message;
 		message = dest_user;
+		char* dest_username;
 		int username_length = 0;
 		while(*message != ' '){
 			message++;
@@ -268,9 +403,14 @@ ssize_t device_write(struct file *filp, const char __user *buf, size_t count,
 			dest_username[i] = *message;
 			message++;
 		}
+		printk(KERN_INFO "Username is %s and username length is %d", dest_username,username_length);
 		
-		incomeMessage->toUser = char_to_int(dest_username, username_length);
-		printk("Id converted to int %d\n", incomeMessage->toUser);
+		incomeMessage->toUser = username_to_userid(dest_username, username_length);
+		if(incomeMessage->toUser == -1){
+			up(&dev->sem);
+			return -EINVAL;
+		}
+		printk("Id converted from username %d\n", incomeMessage->toUser);
 		
 		// check for unread messages count for user
 		struct user_message *unread_check = dev->head;
@@ -291,7 +431,7 @@ ssize_t device_write(struct file *filp, const char __user *buf, size_t count,
 		// message is at ' '
 		message++;
 		incomeMessage->length = count - username_length - 2;
-		printk("income message length %d count %d username_length %d", incomeMessage->length, count, username_length);
+		printk("income message length %d count %d username_length %d\n", incomeMessage->length, count, username_length);
 		incomeMessage->read = 0;
 		char* temp_message = kmalloc(incomeMessage->length * sizeof(char), GFP_KERNEL);
 		if(!temp_message){

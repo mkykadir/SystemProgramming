@@ -6,4 +6,16 @@ Write terminal following command:
 
 # Compiling
 
-    gcc hello.c -o hello -D_FILE_OFFSET_BITS=64 -lfuse -lcsv
+    gcc main.c -o main -D_FILE_OFFSET_BITS=64 -lfuse -lcsv
+
+# After
+
+Create a test folder
+
+If you dont want to debug 
+
+    ./main test
+
+If you want to debug
+
+    ./main -d test

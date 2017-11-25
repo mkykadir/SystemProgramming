@@ -190,7 +190,21 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 				temp = temp->next;
 				continue;
 			}
-			filler(buf, temp->city, NULL, 0);
+			
+			crow* temp2 = my_list.head;
+			while(temp2 != NULL && temp2!=temp){
+				if(temp2->city == NULL){
+					temp2 = temp2->next;
+					continue;
+				}
+				if(strcmp(temp->city, temp2->city) == 0)
+					break;
+					
+				temp2 = temp2->next;
+			}
+			if(temp == temp2)
+				filler(buf, temp->city, NULL, 0);
+				
 			temp = temp->next;
 		}
 	}else if(strcmp(path, codes_path) == 0){
@@ -210,7 +224,19 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 					continue;
 				}
 				
-				if(strcmp(temp->city, city_name) == 0){
+				crow* temp2 = my_list.head;
+				while(temp2 != NULL && temp2!=temp){
+					if(temp2->city == NULL){
+						temp2 = temp2->next;
+						continue;
+					}
+					if(strcmp(temp->district, temp2->district) == 0)
+						break;
+						
+					temp2 = temp2->next;
+				}
+				
+				if(temp==temp2 && strcmp(temp->city, city_name) == 0){
 					filler(buf, temp->district, NULL, 0);
 				}
 				temp = temp->next;

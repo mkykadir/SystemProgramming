@@ -8,6 +8,81 @@
 
 char* path;
 
+// START: CSV things
+typedef struct csv_row {
+	char* code;
+	char* neighborhood;
+	char* city;
+	char* district;
+	char* latitude;
+	char* longitude;
+	struct csv_row* next;
+} crow;
+
+typedef struct linked_list {
+	crow* head;
+} llist;
+
+int which_column = 0;
+llist my_list;
+
+void cb1(void *s, size_t len, void* data){
+	crow* current = ((llist*)data)->head;
+	if(current == NULL){
+		printf("Current is null\n");
+		return;
+	}
+	switch(which_column){
+		case 0: //code
+			current->code = (char*) malloc(len+1);
+			strcpy(current->code, (char*)s);
+			break;
+		case 1: //neighbor
+			current->neighborhood = (char*) malloc(len+1);
+			strcpy(current->neighborhood, (char*)s);
+			break;
+		case 2: //city
+			current->city = (char*) malloc(len+1);
+			strcpy(current->city, (char*)s);
+			break;
+		case 3: //district
+			current->district = (char*) malloc(len+1);
+			strcpy(current->district, (char*)s);
+			break;
+		case 4: //lat
+			current->latitude = (char*) malloc(len+1);
+			strcpy(current->latitude, (char*)s);
+			break;
+		case 5: //long
+			current->longitude = (char*) malloc(len+1);
+			strcpy(current->longitude, (char*)s);
+			break;
+		default:
+			break;
+	}
+	which_column++;
+}
+
+void cb2(int c, void *data){
+	which_column = 0;
+	crow* new_row = (crow*) malloc(sizeof(crow));
+	new_row->next = ((llist*)data)->head;
+	((llist*)data)->head = new_row;
+}
+
+
+static int is_space(unsigned char c) {
+	if (c == CSV_SPACE || c == CSV_TAB) return 1;
+	return 0;
+}
+
+static int is_term(unsigned char c) {
+  if (c == CSV_CR || c == CSV_LF) return 1;
+  return 0;
+}
+
+// END: CSV things
+
 static const char* names_path = "/NAMES";
 static const char* codes_path = "/CODES";
 
@@ -109,14 +184,38 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	}else if(strcmp(path, names_path) == 0){
 		filler(buf, ".", NULL, 0);
 		filler(buf, "..", NULL , 0);
-		filler(buf, "Istanbul", NULL, 0); // DEBUG
+		crow* temp = my_list.head;
+		while(temp != NULL){
+			if(temp->city == NULL){
+				temp = temp->next;
+				continue;
+			}
+			filler(buf, temp->city, NULL, 0);
+			temp = temp->next;
+		}
 	}else if(strcmp(path, codes_path) == 0){
 		filler(buf, ".", NULL, 0);
 		filler(buf, "..", NULL , 0);
 		filler(buf, "34", NULL, 0); // DEBUG
 	}else if(delim_count == 2){ // /NAMES/Istanbul or /CODES/34
 		if(strstr(path, names_path) != NULL){ // Should containt folders
-			filler(buf, "Sariyer", NULL, 0); // DEBUG
+			size_t city_name_size = strlen(path) - strlen(names_path);
+			char* city_name = (char*) malloc(city_name_size);
+			strcpy(city_name, path + 7);
+			city_name[city_name_size - 1] = '\0';
+			crow* temp = my_list.head;
+			while(temp != NULL){
+				if(temp->city == NULL){
+					temp = temp->next;
+					continue;
+				}
+				
+				if(strcmp(temp->city, city_name) == 0){
+					filler(buf, temp->district, NULL, 0);
+				}
+				temp = temp->next;
+			}
+			free(city_name);
 		}
 		else if(strstr(path, codes_path) != NULL){ // Should contain files
 			filler(buf, "34398.txt", NULL, 0); // DEBUG
@@ -154,6 +253,41 @@ static struct fuse_operations fuse_oper = {
 };
 
 int main(int argc, char* argv[])
-{
+{	
+	FILE* fp;
+	struct csv_parser p;
+	char buf[1024];
+	size_t bytes_read;
+	unsigned char options = CSV_STRICT | CSV_APPEND_NULL;
+	
+	crow* first = (crow*)malloc(sizeof(crow));
+	my_list.head = first;
+	
+	if(csv_init(&p, options) != 0){
+		printf("Failed to initialize csv parser\n");
+		exit(EXIT_FAILURE);
+	}
+	
+	csv_set_space_func(&p, is_space);
+	csv_set_term_func(&p, is_term);
+	csv_set_delim(&p, '\t');
+	fp = fopen("postal-codes.csv", "rb");
+	if(!fp){
+		printf("Failed to open file %s - %s\n", argv[1], strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	
+	while((bytes_read = fread(buf, 1, 1024, fp)) > 0){
+		size_t ret = csv_parse(&p, buf, bytes_read, cb1, cb2, &my_list);
+		if(ret != bytes_read){
+			printf("Error while parsing file :%s\n", csv_strerror(csv_error(&p)));
+		}
+	}
+	
+	csv_fini(&p, cb1, cb2, &my_list);
+	
+	fclose(fp);
+	csv_free(&p);
+	
 	return fuse_main(argc, argv, &fuse_oper, NULL);
 }

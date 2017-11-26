@@ -30,8 +30,18 @@ typedef struct linked_list {
 	crow* head;
 } llist;
 
+/*typedef struct slotes {
+	char* sTring;
+	struct slotes* next;
+} slot;*/
+
+/*typedef struct storage_list {
+	slot* head;
+} s_list;*/
+
 int which_column = 0;
 llist my_list;
+//s_list trunk;
 
 void cb1(void *s, size_t len, void* data){
 	crow* current = ((llist*)data)->head;
@@ -146,6 +156,47 @@ static int fuse_getattr(const char* path, struct stat *stbuf){
 			stbuf->st_mode = S_IFREG | 0444;
 			stbuf->st_nlink = 1;
 			// need to get length of txt file
+
+			char* token_path = (char*)malloc(strlen(path)+1);
+			strcpy(token_path, path);
+			char* token = strtok(token_path, "/");
+			char* temp_code_name = (char*) malloc(3);
+
+			char* plate;
+			
+			int i = 0;
+			while(token != NULL){
+				i++;
+				if(i == 2)
+					plate = token;
+				token = strtok(NULL, "/");
+			}
+			size_t file_length = 0;
+			crow *temp = my_list.head;
+			while(temp != NULL){
+				if(temp->code == NULL){
+					temp = temp->next;
+					continue;
+				}
+				for(i = 0; i < 2; i++)
+					temp_code_name[i] = temp->code[i];
+				temp_code_name[2] = '\0';
+				if(strcmp(temp_code_name, plate) == 0 ){
+						
+						
+					file_length += strlen(fcode) + strlen(fneighborhood) +
+						strlen(fcity) + strlen(fdistrict) +
+						strlen(flatitude) + strlen(flongitude) +
+						strlen(temp->code) + strlen(temp->neighborhood) +
+						strlen(temp->city) + strlen(temp->district) +
+						strlen(temp->latitude) + strlen(temp->longitude) + 1;
+					
+				}
+				temp = temp->next;
+			}
+
+			stbuf->st_size = file_length;
+			// need to get length of txt file
 		}
 		else{
 			res = -ENOENT;
@@ -198,7 +249,7 @@ static int fuse_getattr(const char* path, struct stat *stbuf){
 				}
 				temp = temp->next;
 			}
-			
+
 			stbuf->st_size = file_length;
 			// need to get length of txt file
 		}
@@ -334,7 +385,6 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			char* plate = (char*) malloc(3);
 			strcpy(plate, path + 7);
 			plate[3] = '\0';
-			printf("plate is %s\n", plate);
 			crow *temp = my_list.head;
 			char* temp_code_name = (char*) malloc(3);
 
@@ -474,7 +524,7 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset,
 {
 	size_t len;
 	(void) fi;
-	// /NAMES/Istanbul/Sariyer/Maslak .txt should be added!
+
 	int delim_count = 0;
 	int i;
 	for(i = 0; i < strlen(path); i++){
@@ -508,6 +558,8 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset,
 			}
 			
 			crow *temp = my_list.head;
+			
+			
 			while(temp != NULL){
 				if(temp->city == NULL){
 					temp = temp->next;
@@ -550,7 +602,103 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset,
 		}else{
 			return -ENOENT;
 		}
-	}else{
+	}
+	else if(strstr(path, codes_path) != NULL){
+		if(delim_count == 3){
+			printf("ENTERED\n"); //DEBUG
+			
+			char* token_path = (char*)malloc(strlen(path)+1);
+			strcpy(token_path, path);
+			char* token = strtok(token_path, "/");
+			
+			char* code;
+		
+			
+			int i = 0;
+			while(token != NULL){
+				i++;
+				if(i == 3)
+					code = token;
+				token = strtok(NULL, "/");
+			}
+			printf("pahtttt is %s\n", path);
+
+			printf("code is %s\n", code);
+			
+			crow *temp = my_list.head;
+			char* temp_code_name = (char*) malloc(3);
+			size_t file_length = 0;
+
+			while(temp != NULL){
+				if(temp->code == NULL){
+					temp = temp->next;
+					continue;
+				}
+			
+				if(strcmp(temp->code, code) == 0 ){
+						
+						
+					file_length += strlen(fcode) + strlen(fneighborhood) +
+						strlen(fcity) + strlen(fdistrict) +
+						strlen(flatitude) + strlen(flongitude) +
+						strlen(temp->code) + strlen(temp->neighborhood) +
+						strlen(temp->city) + strlen(temp->district) +
+						strlen(temp->latitude) + strlen(temp->longitude) + 3;
+					
+				}
+				
+				temp = temp->next;
+			}
+			crow *temp2 = my_list.head;
+			printf("file length is %d\n",file_length);
+			char* result = (char*) malloc(file_length + 1);
+			strcpy(result, fcode); 
+			printf("result is nothing %s", result);
+			i = 0;
+			while(temp2 != NULL){
+				if(temp2->code == NULL){
+					temp2 = temp2->next;
+					continue;
+				}
+				
+				
+				if(strcmp(temp2->code, code) == 0){
+
+						
+						if(i != 0){
+							strcat(result, fcode);
+						}
+						else 
+							i = 1;
+						strcat(result, temp2->code);
+						strcat(result, fneighborhood); strcat(result, temp2->neighborhood);
+						strcat(result, fcity); strcat(result, temp2->city);
+						strcat(result, fdistrict); strcat(result, temp2->district);
+						strcat(result, flatitude); strcat(result, temp2->latitude);
+						strcat(result, flongitude); strcat(result, temp2->longitude);
+						strcat(result, "\n\n");
+						
+				}
+				
+				temp2 = temp2->next;
+			}
+			len = strlen(result);
+			printf("len is : %d\n", len); // DEBUG
+			if(offset < len){
+				if(offset + size > len)
+					size = len - offset;
+				memcpy(buf, result + offset, size);
+			}else
+			size = 0;
+			free(result);		
+			return size;
+			
+		}
+		else{
+			return -ENOENT;
+		}
+	}
+	else{
 		return -ENOENT;
 	}
 	

@@ -8,6 +8,13 @@
 
 char* path;
 
+static const char* fcode = "code: ";
+static const char* fneighborhood = "\nneighborhood: ";
+static const char* fcity = "\ncity: ";
+static const char* fdistrict = "\ndistrict: ";
+static const char* flatitude = "\nlatitude: ";
+static const char* flongitude = "\nlongitude: ";
+
 // START: CSV things
 typedef struct csv_row {
 	char* code;
@@ -148,6 +155,51 @@ static int fuse_getattr(const char* path, struct stat *stbuf){
 		if(strstr(path, names_path) != NULL){ // /NAMES/Istanbul/Sariyer/Maslak.txt
 			stbuf->st_mode = S_IFREG | 0444;
 			stbuf->st_nlink = 1;
+			
+			char* token_path = (char*)malloc(strlen(path)+1);
+			strcpy(token_path, path);
+			char* token = strtok(token_path, "/");
+			
+			char* city;
+			char* district;
+			char* neighborhood;
+			
+			int i = 0;
+			while(token != NULL){
+				i++;
+				if(i == 2)
+					city = token;
+				if(i == 3)
+					district = token;
+				if(i == 4)
+					neighborhood = token;
+				token = strtok(NULL, "/");
+			}
+			size_t file_length = 0;
+			crow *temp = my_list.head;
+			while(temp != NULL){
+				if(temp->city == NULL){
+					temp = temp->next;
+					continue;
+				}
+				
+				if(strcmp(temp->city, city) == 0 
+					&& strcmp(temp->district, district) == 0
+					&& strcmp(temp->neighborhood, neighborhood) == 0){
+						
+						
+					file_length = strlen(fcode) + strlen(fneighborhood) +
+						strlen(fcity) + strlen(fdistrict) +
+						strlen(flatitude) + strlen(flongitude) +
+						strlen(temp->code) + strlen(temp->neighborhood) +
+						strlen(temp->city) + strlen(temp->district) +
+						strlen(temp->latitude) + strlen(temp->longitude) + 1;
+					break;
+				}
+				temp = temp->next;
+			}
+			
+			stbuf->st_size = file_length;
 			// need to get length of txt file
 		}
 		else{
@@ -322,6 +374,23 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	}
 	else if(delim_count == 3){ // /NAMES/Istanbul/Sariyer
 		if(strstr(path, names_path) != NULL){ // Should contain files
+			char* token_path = (char*)malloc(strlen(path)+1);
+			strcpy(token_path, path);
+			char* token = strtok(token_path, "/");
+			
+			char* city;
+			char* district;
+			
+			int i = 0;
+			while(token != NULL){
+				i++;
+				if(i == 2)
+					city = token;
+				if(i == 3)
+					district = token;
+				token = strtok(NULL, "/");
+			}
+			/*
 			size_t double_name_size = strlen(path) - strlen(names_path);
 			char* double_name = (char*) malloc(double_name_size);
 			strcpy(double_name, path + 7);
@@ -351,7 +420,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			strcpy(district_name, double_name + iterator + 1);
 			district_name[district_name_size] = '\0';
 			printf("district_name is %s\n", district_name);
-			
+			*/
 			crow *temp = my_list.head;
 			
 			while(temp != NULL){
@@ -362,7 +431,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 				
 				crow* temp2 = my_list.head;
 				while(temp2 != NULL && temp2!=temp){
-					if(temp2->city == NULL){
+					if(temp2->neighborhood == NULL){
 						temp2 = temp2->next;
 						continue;
 					}
@@ -372,17 +441,15 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 					temp2 = temp2->next;
 				}
 				
-				if(temp==temp2 && strcmp(temp->city, city_name) == 0 && strcmp(temp->district, district_name) == 0){
+				if(/*temp==temp2 && */strcmp(temp->city, city) == 0 && strcmp(temp->district, district) == 0){
+					
 					filler(buf, temp->neighborhood, NULL, 0);
 				}
 				temp = temp->next;
 			}
-			free(district_name);
-			free(city_name);
-			free(double_name);
-			
-			
-			
+			//free(district_name);
+			//free(city_name);
+			//free(double_name);			
 		}
 		else{
 			return -ENOENT;
@@ -407,15 +474,87 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset,
 {
 	size_t len;
 	(void) fi;
-	
+	// /NAMES/Istanbul/Sariyer/Maslak .txt should be added!
 	int delim_count = 0;
 	int i;
 	for(i = 0; i < strlen(path); i++){
 		if(path[i] == '/'){
-			delim_count++;
+			delim_count++;	
 			printf("DELIM_COUNT is: %d\n", delim_count); // DEBUG
 		}
 	}
+	
+	if(strstr(path, names_path) != NULL){
+		if(delim_count == 4){
+			printf("ENTERED\n"); //DEBUG
+			char* token_path = (char*)malloc(strlen(path)+1);
+			strcpy(token_path, path);
+			char* token = strtok(token_path, "/");
+			
+			char* city;
+			char* district;
+			char* neighborhood;
+			
+			int i = 0;
+			while(token != NULL){
+				i++;
+				if(i == 2)
+					city = token;
+				if(i == 3)
+					district = token;
+				if(i == 4)
+					neighborhood = token;
+				token = strtok(NULL, "/");
+			}
+			
+			crow *temp = my_list.head;
+			while(temp != NULL){
+				if(temp->city == NULL){
+					temp = temp->next;
+					continue;
+				}
+				
+				if(strcmp(temp->city, city) == 0 
+					&& strcmp(temp->district, district) == 0
+					&& strcmp(temp->neighborhood, neighborhood) == 0){
+						
+						char* result = (char*) malloc(
+								strlen(fcode) + strlen(fneighborhood) +
+								strlen(fcity) + strlen(fdistrict) +
+								strlen(flatitude) + strlen(flongitude) +
+								strlen(temp->code) + strlen(temp->neighborhood) +
+								strlen(temp->city) + strlen(temp->district) +
+								strlen(temp->latitude) + strlen(temp->longitude) + 1);
+						
+						strcpy(result, fcode); strcat(result, temp->code);
+						strcat(result, fneighborhood); strcat(result, temp->neighborhood);
+						strcat(result, fcity); strcat(result, temp->city);
+						strcat(result, fdistrict); strcat(result, temp->district);
+						strcat(result, flatitude); strcat(result, temp->latitude);
+						strcat(result, flongitude); strcat(result, temp->longitude);
+						
+						len = strlen(result);
+						printf("len is : %d\n", len); // DEBUG
+						if(offset < len){
+							if(offset + size > len)
+								size = len - offset;
+							memcpy(buf, result + offset, size);
+						}else
+							size = 0;
+							
+						return size;
+				}
+				
+				temp = temp->next;
+			}	
+		}else{
+			return -ENOENT;
+		}
+	}else{
+		return -ENOENT;
+	}
+	
+	
 }
 
 static struct fuse_operations fuse_oper = {

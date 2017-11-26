@@ -252,6 +252,67 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	}
 	else if(delim_count == 3){ // /NAMES/Istanbul/Sariyer
 		if(strstr(path, names_path) != NULL){ // Should contain files
+			size_t double_name_size = strlen(path) - strlen(names_path);
+			char* double_name = (char*) malloc(double_name_size);
+			strcpy(double_name, path + 7);
+			double_name[double_name_size - 1] = '\0'; // Istanbul/Sariyer
+			
+			printf("double_name is %s\n", double_name);
+			
+			int iterator;
+			for(iterator = 0; iterator < double_name_size; iterator++){
+				if(double_name[iterator] == '/'){
+					double_name[iterator] = '\0';
+					break;
+				}
+			}
+			if (iterator == double_name_size)
+				return -ENOENT;
+			
+			size_t city_name_size = strlen(double_name);
+			char* city_name = (char*) malloc(city_name_size+1);
+			strcpy(city_name, double_name);
+			city_name[city_name_size] = '\0';
+			
+			printf("city_name is %s\n", city_name);
+			
+			size_t district_name_size = strlen(double_name + iterator +1);
+			char* district_name = (char*) malloc(district_name_size+1);
+			strcpy(district_name, double_name + iterator + 1);
+			district_name[district_name_size] = '\0';
+			printf("district_name is %s\n", district_name);
+			
+			crow *temp = my_list.head;
+			
+			while(temp != NULL){
+				if(temp->city == NULL){
+					temp = temp->next;
+					continue;
+				}
+				
+				crow* temp2 = my_list.head;
+				while(temp2 != NULL && temp2!=temp){
+					if(temp2->city == NULL){
+						temp2 = temp2->next;
+						continue;
+					}
+					if(strcmp(temp->neighborhood, temp2->neighborhood) == 0)
+						break;
+						
+					temp2 = temp2->next;
+				}
+				
+				if(temp==temp2 && strcmp(temp->city, city_name) == 0 && strcmp(temp->district, district_name) == 0){
+					filler(buf, temp->neighborhood, NULL, 0);
+				}
+				temp = temp->next;
+			}
+			free(district_name);
+			free(city_name);
+			free(double_name);
+			
+			
+			
 			filler(buf, "Maslak.txt", NULL, 0); // DEBUG
 		}
 		else{
@@ -272,10 +333,27 @@ static int fuse_open(const char *path, struct fuse_file_info *fi)
 	return 0;
 }
 
+static int fuse_read(const char *path, char *buf, size_t size, off_t offset,
+						struct fuse_file_info *fi)
+{
+	size_t len;
+	(void) fi;
+	
+	int delim_count = 0;
+	int i;
+	for(i = 0; i < strlen(path); i++){
+		if(path[i] == '/'){
+			delim_count++;
+			printf("DELIM_COUNT is: %d\n", delim_count); // DEBUG
+		}
+	}
+}
+
 static struct fuse_operations fuse_oper = {
 	.getattr = fuse_getattr,
 	.readdir = fuse_readdir,
 	.open = fuse_open,
+	.read = fuse_read,
 };
 
 int main(int argc, char* argv[])

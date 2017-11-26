@@ -210,7 +210,42 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	}else if(strcmp(path, codes_path) == 0){
 		filler(buf, ".", NULL, 0);
 		filler(buf, "..", NULL , 0);
-		filler(buf, "34", NULL, 0); // DEBUG
+		crow* temp = my_list.head;
+		char* temp_code = (char*) malloc(3);
+		char* temp_code2 = (char*) malloc(3);
+
+		while(temp != NULL){
+			if(temp->code == NULL){
+				temp = temp->next;
+				continue;
+			}
+			
+			for(i = 0; i < 2; i++)
+					temp_code[i] = temp->code[i];
+			temp_code[2] = '\0';
+			
+			crow* temp2 = my_list.head;
+			while(temp2 != NULL && temp2!=temp){
+				if(temp2->code == NULL){
+					temp2 = temp2->next;
+					continue;
+				}		
+				for(i = 0; i < 2; i++)
+						temp_code2[i] = temp2->code[i];
+				temp_code2[2] = '\0';
+				if(strcmp(temp_code, temp_code2) == 0)
+					break;
+					
+				temp2 = temp2->next;
+			}
+			if(temp == temp2){
+				
+				filler(buf, temp_code, NULL, 0);
+			}
+			temp = temp->next;
+		}
+		free(temp_code);
+		free(temp_code2);
 	}else if(delim_count == 2){ // /NAMES/Istanbul or /CODES/34
 		if(strstr(path, names_path) != NULL){ // Should containt folders
 			size_t city_name_size = strlen(path) - strlen(names_path);
@@ -244,7 +279,42 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			free(city_name);
 		}
 		else if(strstr(path, codes_path) != NULL){ // Should contain files
-			filler(buf, "34398.txt", NULL, 0); // DEBUG
+			char* plate = (char*) malloc(3);
+			strcpy(plate, path + 7);
+			plate[3] = '\0';
+			printf("plate is %s\n", plate);
+			crow *temp = my_list.head;
+			char* temp_code_name = (char*) malloc(3);
+
+			while(temp != NULL){
+				if(temp->code == NULL){
+					temp = temp->next;
+					continue;
+				}
+				
+				for(i = 0; i < 2; i++)
+					temp_code_name[i] = temp->code[i];
+				temp_code_name[2] = '\0';
+				
+				crow* temp2 = my_list.head;
+				while(temp2 != NULL && temp2!=temp){
+					if(temp2->code == NULL){
+						temp2 = temp2->next;
+						continue;
+					}
+					if(strcmp(temp->code, temp2->code) == 0)
+						break;
+						
+					temp2 = temp2->next;
+				}
+				
+				if(temp==temp2 && strcmp(temp_code_name, plate) == 0){
+					filler(buf, temp->code, NULL, 0);
+				}
+				temp = temp->next;
+			}
+			
+			free(plate);
 		}
 		else{
 			return -ENOENT;
@@ -313,7 +383,6 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			
 			
 			
-			filler(buf, "Maslak.txt", NULL, 0); // DEBUG
 		}
 		else{
 			return -ENOENT;

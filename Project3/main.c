@@ -153,7 +153,6 @@ static int fuse_getattr(const char* path, struct stat *stbuf){
 			strcpy(token_path, path);
 			char* token = strtok(token_path, "/");
 			
-			char* district;
 			char* file_name;
 			char* plate;
 			int i = 0;

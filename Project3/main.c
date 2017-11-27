@@ -97,13 +97,77 @@ static int is_term(unsigned char c) {
 static const char* names_path = "/NAMES";
 static const char* codes_path = "/CODES";
 
+void csv_cleaner(){
+	printf("entered cleaner\n");
+	crow* clean_list = my_list.head;
+	while(clean_list != NULL){
+		printf("entered loop\n");
+		if(clean_list->code != NULL)
+			free(clean_list->code);
+		if(clean_list->neighborhood != NULL)
+			free(clean_list->neighborhood);
+		if(clean_list->city != NULL)
+			free(clean_list->city);
+		if(clean_list->district != NULL)
+			free(clean_list->district);
+		if(clean_list->latitude != NULL)
+			free(clean_list->latitude);
+		if(clean_list->longitude != NULL)
+			free(clean_list->longitude);
+		
+		printf("finished fields\n");
+		crow* temp = clean_list;
+		clean_list = clean_list->next;
+		free(temp);
+	}
+	printf("exitting clean\n");
+}
+
 void csv_data_updater(){
-	// thinking...
+	/*if(my_list.head != NULL)
+		my_list.head = NULL;*/
+		
+		//csv_cleaner(); // clean existing data
+	my_list.head = NULL;
+	FILE* fp;
+	struct csv_parser p;
+	char buf[1024];
+	size_t bytes_read;
+	unsigned char options = CSV_STRICT | CSV_APPEND_NULL;
+	
+	crow* first = (crow*)malloc(sizeof(crow));
+	my_list.head = first;
+	first->next = NULL;
+	
+	if(csv_init(&p, options) != 0){
+		printf("Failed to initialize csv parser\n");
+		exit(EXIT_FAILURE);
+	}
+	
+	csv_set_space_func(&p, is_space);
+	csv_set_term_func(&p, is_term);
+	csv_set_delim(&p, '\t');
+	fp = fopen("postal-codes.csv", "rb");
+	if(!fp){
+		printf("Failed to open file %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	
+	while((bytes_read = fread(buf, 1, 1024, fp)) > 0){
+		size_t ret = csv_parse(&p, buf, bytes_read, cb1, cb2, &my_list);
+		if(ret != bytes_read){
+			printf("Error while parsing file :%s\n", csv_strerror(csv_error(&p)));
+		}
+	}
+	
+	csv_fini(&p, cb1, cb2, &my_list);
+	
+	fclose(fp);
+	csv_free(&p);
 }
 
 static int fuse_getattr(const char* path, struct stat *stbuf){
 	int res = 0;
-	
 	printf("PATH is: %s\n", path); // DEBUG
 	int delim_count = 0;
 	int i;
@@ -191,7 +255,7 @@ static int fuse_getattr(const char* path, struct stat *stbuf){
 			}
 			printf("LENGTH IS %d\n", file_length);
 			stbuf->st_size = file_length;
-			free(token_path);
+			// free(token_path);
 		}
 		else{
 			res = -ENOENT;
@@ -249,7 +313,7 @@ static int fuse_getattr(const char* path, struct stat *stbuf){
 			}
 			printf("LENGTH IS %d\n", file_length);
 			stbuf->st_size = file_length;
-			free(token_path);
+			// free(token_path);
 		}
 		else{
 			res = -ENOENT;
@@ -267,6 +331,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	(void) offset;
 	(void) fi;
 	
+	
 	printf("PATH is: %s\n", path); // DEBUG
 	int delim_count = 0;
 	int i;
@@ -276,12 +341,13 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			printf("DELIM_COUNT is: %d\n", delim_count); // DEBUG
 		}
 	}
-	
+	//csv_data_updater();
 	if(strcmp(path, "/") == 0){
 		filler(buf, ".", NULL, 0);
 		filler(buf, "..", NULL , 0);
 		filler(buf, names_path+1, NULL, 0);
 		filler(buf, codes_path+1, NULL, 0);
+		csv_data_updater();
 	}else if(strcmp(path, names_path) == 0){
 		filler(buf, ".", NULL, 0);
 		filler(buf, "..", NULL , 0);
@@ -290,17 +356,16 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		crow* temp = my_list.head;
 		while(temp != NULL){
 			if(temp->city == NULL){
+				//printf("temp city is null\n");
 				temp = temp->next;
 				continue;
 			}
-			
 			crow* is_temp = is_added.head;
 			while(is_temp != NULL){
 				if(is_temp->city == NULL){
 					is_temp = is_temp->next;
 					continue;
 				}
-				
 				if(strcmp(temp->city, is_temp->city) == 0)
 					break;
 					
@@ -308,6 +373,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			}
 			
 			if(is_temp == NULL){
+				//printf("entered is_temp\n");
 				crow* add_temp = (crow*)malloc(sizeof(crow));
 				add_temp->code = (char*) malloc(strlen(temp->code)+1);
 				strcpy(add_temp->code, temp->code);
@@ -325,9 +391,14 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 				is_added.head = add_temp;
 				
 				filler(buf, temp->city, NULL, 0);
+				//printf("filled %s %s %s %s %s %s\n", temp->code, temp->district, temp->neighborhood, temp->city, temp->latitude, temp->longitude);
 			}
+			//printf("lat: %s\n", temp->latitude);
+			/*if(temp->next == NULL)
+				printf("next is null\n");*/
 			temp = temp->next;
 		}
+		//printf("das ist finished\n");
 		crow* clean_list = is_added.head;
 		while(clean_list != NULL){
 			if(clean_list->code)
@@ -407,7 +478,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			}
 			temp = temp->next;
 		}
-		crow* clean_list = is_added.head;
+		/*crow* clean_list = is_added.head;
 		while(clean_list != NULL){
 			if(clean_list->code)
 				free(clean_list->code);
@@ -425,10 +496,13 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			crow* temp = clean_list;
 			clean_list = clean_list->next;
 			free(temp);
-		}
+		}*/
 		
 	}else if(delim_count == 2){ // /NAMES/Istanbul or /CODES/34
 		if(strstr(path, names_path) != NULL){ // Should containt folders
+			filler(buf, ".", NULL, 0);
+			filler(buf, "..", NULL , 0);
+			//csv_data_updater();
 			size_t city_name_size = strlen(path) - strlen(names_path);
 			char* city_name = (char*) malloc(city_name_size);
 			strcpy(city_name, path + 7);
@@ -536,7 +610,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 				temp = temp->next;
 			}
 			
-			free(plate);
+			// free(plate);
 
 		}
 		else{
@@ -545,6 +619,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	}
 	else if(delim_count == 3){ // /NAMES/Istanbul/Sariyer
 		if(strstr(path, names_path) != NULL){ // Should contain files
+			//csv_data_updater();
 			char* token_path = (char*)malloc(strlen(path)+1);
 			strcpy(token_path, path);
 			char* token = strtok(token_path, "/");
@@ -611,7 +686,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 				}
 				temp = temp->next;
 			}
-			crow* clean_list = is_added.head;
+			/*crow* clean_list = is_added.head;
 			while(clean_list != NULL){
 				if(clean_list->code)
 					free(clean_list->code);
@@ -629,8 +704,8 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 				crow* temp = clean_list;
 				clean_list = clean_list->next;
 				free(temp);
-			}
-			free(token_path);			
+			}*/
+			// free(token_path);			
 		}
 		else{
 			return -ENOENT;
@@ -664,6 +739,7 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset,
 			printf("DELIM_COUNT is: %d\n", delim_count); // DEBUG
 		}
 	}
+	//csv_data_updater();
 	
 	if(strstr(path, names_path) != NULL){
 		if(delim_count == 4){
@@ -820,41 +896,7 @@ static struct fuse_operations fuse_oper = {
 };
 
 int main(int argc, char* argv[])
-{	
-	FILE* fp;
-	struct csv_parser p;
-	char buf[1024];
-	size_t bytes_read;
-	unsigned char options = CSV_STRICT | CSV_APPEND_NULL;
-	
-	crow* first = (crow*)malloc(sizeof(crow));
-	my_list.head = first;
-	
-	if(csv_init(&p, options) != 0){
-		printf("Failed to initialize csv parser\n");
-		exit(EXIT_FAILURE);
-	}
-	
-	csv_set_space_func(&p, is_space);
-	csv_set_term_func(&p, is_term);
-	csv_set_delim(&p, '\t');
-	fp = fopen("postal-codes.csv", "rb");
-	if(!fp){
-		printf("Failed to open file %s - %s\n", argv[1], strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-	
-	while((bytes_read = fread(buf, 1, 1024, fp)) > 0){
-		size_t ret = csv_parse(&p, buf, bytes_read, cb1, cb2, &my_list);
-		if(ret != bytes_read){
-			printf("Error while parsing file :%s\n", csv_strerror(csv_error(&p)));
-		}
-	}
-	
-	csv_fini(&p, cb1, cb2, &my_list);
-	
-	fclose(fp);
-	csv_free(&p);
+{		
 	
 	return fuse_main(argc, argv, &fuse_oper, NULL);
 }

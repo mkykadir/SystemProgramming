@@ -1,3 +1,16 @@
+/*
+ * Muhammed Kadir Yücel - 150140119
+ * Mahmut Lutfullah Özbilen - 150140123
+ * 
+ * Istanbul Technical University System Programming 3rd Project
+ * FUSE implementation
+ * 
+ * Make sure you have installed libcsv and libfuse before compiling this program.
+ * 
+ * ./program <input_file_name>
+ * 
+ */
+
 #define FUSE_USE_VERSION 26
 
 #include <fuse.h>
@@ -1149,7 +1162,6 @@ static struct fuse_operations fuse_oper = {
 };
 
 int main(int argc, char* argv[])
-{		
-	
+{			
 	return fuse_main(argc, argv, &fuse_oper, NULL);
 }

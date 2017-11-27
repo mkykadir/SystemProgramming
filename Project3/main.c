@@ -124,10 +124,7 @@ void csv_cleaner(){
 }
 
 void csv_data_updater(){
-	/*if(my_list.head != NULL)
-		my_list.head = NULL;*/
-		
-		//csv_cleaner(); // clean existing data
+	
 	my_list.head = NULL;
 	FILE* fp;
 	struct csv_parser p;
@@ -231,7 +228,7 @@ static int fuse_getattr(const char* path, struct stat *stbuf){
 			stbuf->st_nlink = 2;
 		}
 		else if(strstr(path, codes_path) != NULL){ // /CODES/34/34398.txt
-			stbuf->st_mode = S_IFREG | 0444;
+			stbuf->st_mode = S_IFREG | 0664;
 			stbuf->st_nlink = 1;
 			
 			char* token_path = (char*)malloc(strlen(path)+1);
@@ -276,7 +273,6 @@ static int fuse_getattr(const char* path, struct stat *stbuf){
 			}
 			printf("LENGTH IS %d\n", file_length);
 			stbuf->st_size = file_length;
-			// free(token_path);
 		}
 		else{
 			res = -ENOENT;
@@ -334,7 +330,6 @@ static int fuse_getattr(const char* path, struct stat *stbuf){
 			}
 			printf("LENGTH IS %d\n", file_length);
 			stbuf->st_size = file_length;
-			// free(token_path);
 		}
 		else{
 			res = -ENOENT;
@@ -362,7 +357,6 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			printf("DELIM_COUNT is: %d\n", delim_count); // DEBUG
 		}
 	}
-	//csv_data_updater();
 	if(strcmp(path, "/") == 0){
 		filler(buf, ".", NULL, 0);
 		filler(buf, "..", NULL , 0);
@@ -377,7 +371,6 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		crow* temp = my_list.head;
 		while(temp != NULL){
 			if(temp->city == NULL){
-				//printf("temp city is null\n");
 				temp = temp->next;
 				continue;
 			}
@@ -394,7 +387,6 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			}
 			
 			if(is_temp == NULL){
-				//printf("entered is_temp\n");
 				crow* add_temp = (crow*)malloc(sizeof(crow));
 				add_temp->code = (char*) malloc(strlen(temp->code)+1);
 				strcpy(add_temp->code, temp->code);
@@ -412,14 +404,10 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 				is_added.head = add_temp;
 				
 				filler(buf, temp->city, NULL, 0);
-				//printf("filled %s %s %s %s %s %s\n", temp->code, temp->district, temp->neighborhood, temp->city, temp->latitude, temp->longitude);
 			}
-			//printf("lat: %s\n", temp->latitude);
-			/*if(temp->next == NULL)
-				printf("next is null\n");*/
+			
 			temp = temp->next;
 		}
-		//printf("das ist finished\n");
 		crow* clean_list = is_added.head;
 		while(clean_list != NULL){
 			if(clean_list->code)
@@ -499,31 +487,11 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			}
 			temp = temp->next;
 		}
-		/*crow* clean_list = is_added.head;
-		while(clean_list != NULL){
-			if(clean_list->code)
-				free(clean_list->code);
-			if(clean_list->neighborhood)
-				free(clean_list->neighborhood);
-			if(clean_list->city)
-				free(clean_list->city);
-			if(clean_list->district)
-				free(clean_list->district);
-			if(clean_list->latitude)
-				free(clean_list->latitude);
-			if(clean_list->longitude)
-				free(clean_list->longitude);
-			
-			crow* temp = clean_list;
-			clean_list = clean_list->next;
-			free(temp);
-		}*/
 		
 	}else if(delim_count == 2){ // /NAMES/Istanbul or /CODES/34
 		if(strstr(path, names_path) != NULL){ // Should containt folders
 			filler(buf, ".", NULL, 0);
 			filler(buf, "..", NULL , 0);
-			//csv_data_updater();
 			size_t city_name_size = strlen(path) - strlen(names_path);
 			char* city_name = (char*) malloc(city_name_size);
 			strcpy(city_name, path + 7);
@@ -594,6 +562,8 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			free(city_name);
 		}
 		else if(strstr(path, codes_path) != NULL){ // Should contain files
+			filler(buf, ".", NULL, 0);
+			filler(buf, "..", NULL , 0);
 			char* plate = (char*) malloc(3);
 			strcpy(plate, path + 7);
 			plate[3] = '\0';
@@ -630,9 +600,6 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 				}
 				temp = temp->next;
 			}
-			
-			// free(plate);
-
 		}
 		else{
 			return -ENOENT;
@@ -640,7 +607,6 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	}
 	else if(delim_count == 3){ // /NAMES/Istanbul/Sariyer
 		if(strstr(path, names_path) != NULL){ // Should contain files
-			//csv_data_updater();
 			char* token_path = (char*)malloc(strlen(path)+1);
 			strcpy(token_path, path);
 			char* token = strtok(token_path, "/");
@@ -707,26 +673,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 				}
 				temp = temp->next;
 			}
-			/*crow* clean_list = is_added.head;
-			while(clean_list != NULL){
-				if(clean_list->code)
-					free(clean_list->code);
-				if(clean_list->neighborhood)
-					free(clean_list->neighborhood);
-				if(clean_list->city)
-					free(clean_list->city);
-				if(clean_list->district)
-					free(clean_list->district);
-				if(clean_list->latitude)
-					free(clean_list->latitude);
-				if(clean_list->longitude)
-					free(clean_list->longitude);
-				
-				crow* temp = clean_list;
-				clean_list = clean_list->next;
-				free(temp);
-			}*/
-			// free(token_path);			
+					
 		}
 		else{
 			return -ENOENT;
@@ -760,7 +707,6 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset,
 			printf("DELIM_COUNT is: %d\n", delim_count); // DEBUG
 		}
 	}
-	//csv_data_updater();
 	
 	if(strstr(path, names_path) != NULL){
 		if(delim_count == 4){
@@ -784,8 +730,6 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset,
 					file_name = token;
 				token = strtok(NULL, "/");
 			}
-			
-			//i = 0;
 			char* neighborhood = strtok(file_name, ".");
 			
 			crow *temp = my_list.head;
@@ -854,7 +798,6 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset,
 				token = strtok(NULL, "/");
 			}
 			
-			//i = 0;
 			code = strtok(file_name, ".");
 			
 			crow *temp = my_list.head;
@@ -991,6 +934,68 @@ static int fuse_unlink(const char* path)
 			
 	
 	}
+	else if(delim_count == 3){
+		char* token_path = (char*)malloc(strlen(path)+1);
+		strcpy(token_path, path);
+		char* token = strtok(token_path, "/");
+		
+		char* file_name;
+		char* plate;
+		
+		int i = 0;
+		while(token != NULL){
+			i++;
+			if(i == 2)
+				plate = token;
+			if(i == 3)
+				file_name = token;
+			token = strtok(NULL, "/");
+		}
+		char* code = strtok(file_name, ".");
+		
+		crow* temp = my_list.head;
+		
+		if(temp != NULL){ // if element is in head!
+			if(temp->code != NULL){
+				if(strcmp(temp->code, code) == 0){
+					my_list.head = temp->next;
+					free(temp->code);
+					free(temp->city);
+					free(temp->district);
+					free(temp->neighborhood);
+					free(temp->latitude);
+					free(temp->longitude);
+					free(temp);
+					
+					csv_writer();
+					return 0;
+				}
+			}
+		}
+		
+		crow* prev = my_list.head;
+		
+		while(prev->next != NULL){
+			if(prev->next->city == NULL){
+				prev=prev->next;
+				continue;
+			}
+			
+			if(strcmp(prev->next->code, code) != 0){
+						
+				prev = prev->next;
+			}else
+				break;
+		}
+		
+		if(prev->next == NULL)
+			return -ENOENT;
+			
+		crow* prev_temp = prev->next;
+		prev->next = prev->next->next;
+		csv_writer();
+		return 0;
+		}
 	
 	return -ENOENT;
 }
@@ -1040,8 +1045,6 @@ static int fuse_rename(const char* from, const char* to)
 			i++;
 			if(i == 4)
 				new_file = to_token;
-			
-			//printf("to token %s\n", to_token);
 			to_token = strtok(NULL, "/");
 		}
 		printf("new is %s\n", new_file);
@@ -1060,6 +1063,66 @@ static int fuse_rename(const char* from, const char* to)
 				free(temp->neighborhood);
 				temp->neighborhood = (char*) malloc(strlen(new_neighborhood)+1);
 				strcpy(temp->neighborhood, new_neighborhood);
+				break;
+			}
+			
+			temp=temp->next;
+		}
+		if(temp == NULL)
+			return -ENOENT;
+		
+		csv_writer();
+		return 0;
+			
+	}
+	else if(delim_count == 3){
+		char* token_path = (char*)malloc(strlen(from)+1);
+		char* to_path = (char*)malloc(strlen(to)+1);
+		strcpy(token_path, from);
+		strcpy(to_path, to);
+		printf("from %s to %s\n", from, to);
+		char* token = strtok(token_path, "/");
+		
+		
+		char* plate;
+		char* file_name;
+		
+		int i = 0;
+		while(token != NULL){
+			i++;
+			if(i == 2)
+				plate = token;
+			if(i == 3)
+				file_name = token;
+			token = strtok(NULL, "/");
+		}
+		char* code = strtok(file_name, ".");
+		printf("code %s\n", code);
+		
+		char* new_file;
+		char* to_token = strtok(to_path, "/");
+		i = 0;
+		while(to_token != NULL){
+			i++;
+			if(i == 3)
+				new_file = to_token;
+			
+			to_token = strtok(NULL, "/");
+		}
+		printf("new is %s\n", new_file);
+		char* new_code = strtok(new_file, ".");
+		crow* temp = my_list.head;
+		while(temp != NULL){
+			if(temp->code == NULL){
+				temp=temp->next;
+				continue;
+			}
+			
+			if(strcmp(temp->code, code) == 0){
+						
+				free(temp->code);
+				temp->code = (char*) malloc(strlen(code)+1);
+				strcpy(temp->code, new_code);
 				break;
 			}
 			

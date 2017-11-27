@@ -30,6 +30,10 @@ typedef struct linked_list {
 	crow* head;
 } llist;
 
+typedef struct is_added_list {
+	crow* head;
+} islist;
+
 /*typedef struct slotes {
 	char* sTring;
 	struct slotes* next;
@@ -87,7 +91,6 @@ void cb2(int c, void *data){
 	((llist*)data)->head = new_row;
 }
 
-
 static int is_space(unsigned char c) {
 	if (c == CSV_SPACE || c == CSV_TAB) return 1;
 	return 0;
@@ -106,7 +109,6 @@ static const char* codes_path = "/CODES";
 void csv_data_updater(){
 	// thinking...
 }
-
 
 static int fuse_getattr(const char* path, struct stat *stbuf){
 	int res = 0;
@@ -213,7 +215,7 @@ static int fuse_getattr(const char* path, struct stat *stbuf){
 			
 			char* city;
 			char* district;
-			char* neighborhood;
+			char* file_name;
 			
 			int i = 0;
 			while(token != NULL){
@@ -223,9 +225,12 @@ static int fuse_getattr(const char* path, struct stat *stbuf){
 				if(i == 3)
 					district = token;
 				if(i == 4)
-					neighborhood = token;
+					file_name = token;
 				token = strtok(NULL, "/");
 			}
+			
+			char* neighborhood = strtok(file_name, ".");
+			
 			size_t file_length = 0;
 			crow *temp = my_list.head;
 			while(temp != NULL){
@@ -287,6 +292,8 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	}else if(strcmp(path, names_path) == 0){
 		filler(buf, ".", NULL, 0);
 		filler(buf, "..", NULL , 0);
+		islist is_added;
+		is_added.head = NULL;
 		crow* temp = my_list.head;
 		while(temp != NULL){
 			if(temp->city == NULL){
@@ -294,20 +301,38 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 				continue;
 			}
 			
-			crow* temp2 = my_list.head;
-			while(temp2 != NULL && temp2!=temp){
-				if(temp2->city == NULL){
-					temp2 = temp2->next;
+			crow* is_temp = is_added.head;
+			while(is_temp != NULL){
+				if(is_temp->city == NULL){
+					is_temp = is_temp->next;
 					continue;
 				}
-				if(strcmp(temp->city, temp2->city) == 0)
+				
+				if(strcmp(temp->city, is_temp->city) == 0)
 					break;
 					
-				temp2 = temp2->next;
+				is_temp = is_temp->next;
 			}
-			if(temp == temp2)
-				filler(buf, temp->city, NULL, 0);
+			
+			if(is_temp == NULL){
+				crow* add_temp = (crow*)malloc(sizeof(crow));
+				add_temp->code = (char*) malloc(strlen(temp->code)+1);
+				strcpy(add_temp->code, temp->code);
+				add_temp->neighborhood = (char*) malloc(strlen(temp->neighborhood)+1);
+				strcpy(add_temp->neighborhood, temp->neighborhood);
+				add_temp->city = (char*) malloc(strlen(temp->city)+1);
+				strcpy(add_temp->city, temp->city);
+				add_temp->district = (char*) malloc(strlen(temp->district)+1);
+				strcpy(add_temp->district, temp->district);
+				add_temp->latitude = (char*) malloc(strlen(temp->latitude)+1);
+				strcpy(add_temp->latitude, temp->latitude);
+				add_temp->longitude = (char*) malloc(strlen(temp->longitude)+1);
+				strcpy(add_temp->longitude, temp->longitude);
+				add_temp->next = is_added.head;
+				is_added.head = add_temp;
 				
+				filler(buf, temp->city, NULL, 0);
+			}
 			temp = temp->next;
 		}
 	}else if(strcmp(path, codes_path) == 0){
@@ -355,6 +380,8 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			char* city_name = (char*) malloc(city_name_size);
 			strcpy(city_name, path + 7);
 			city_name[city_name_size - 1] = '\0';
+			islist is_added;
+			is_added.head = NULL;
 			crow* temp = my_list.head;
 			while(temp != NULL){
 				if(temp->city == NULL){
@@ -362,20 +389,38 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 					continue;
 				}
 				
-				crow* temp2 = my_list.head;
-				while(temp2 != NULL && temp2!=temp){
-					if(temp2->city == NULL){
-						temp2 = temp2->next;
+				crow* is_temp = is_added.head;
+				while(is_temp != NULL){
+					if(is_temp->city == NULL){
+						is_temp = is_temp->next;
 						continue;
 					}
-					if(strcmp(temp->district, temp2->district) == 0)
+					
+					if(strcmp(temp->city, is_temp->city) == 0 && strcmp(temp->district, is_temp->district) == 0)
 						break;
 						
-					temp2 = temp2->next;
+					is_temp = is_temp->next;
 				}
 				
-				if(temp==temp2 && strcmp(temp->city, city_name) == 0){
-					filler(buf, temp->district, NULL, 0);
+				if(is_temp == NULL){
+					crow* add_temp = (crow*)malloc(sizeof(crow));
+					add_temp->code = (char*) malloc(strlen(temp->code)+1);
+					strcpy(add_temp->code, temp->code);
+					add_temp->neighborhood = (char*) malloc(strlen(temp->neighborhood)+1);
+					strcpy(add_temp->neighborhood, temp->neighborhood);
+					add_temp->city = (char*) malloc(strlen(temp->city)+1);
+					strcpy(add_temp->city, temp->city);
+					add_temp->district = (char*) malloc(strlen(temp->district)+1);
+					strcpy(add_temp->district, temp->district);
+					add_temp->latitude = (char*) malloc(strlen(temp->latitude)+1);
+					strcpy(add_temp->latitude, temp->latitude);
+					add_temp->longitude = (char*) malloc(strlen(temp->longitude)+1);
+					strcpy(add_temp->longitude, temp->longitude);
+					add_temp->next = is_added.head;
+					is_added.head = add_temp;
+					
+					if(strcmp(temp->city, city_name) == 0)
+						filler(buf, temp->district, NULL, 0);
 				}
 				temp = temp->next;
 			}
@@ -428,6 +473,9 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			strcpy(token_path, path);
 			char* token = strtok(token_path, "/");
 			
+			islist is_added;
+			is_added.head = NULL;
+			
 			char* city;
 			char* district;
 			
@@ -440,37 +488,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 					district = token;
 				token = strtok(NULL, "/");
 			}
-			/*
-			size_t double_name_size = strlen(path) - strlen(names_path);
-			char* double_name = (char*) malloc(double_name_size);
-			strcpy(double_name, path + 7);
-			double_name[double_name_size - 1] = '\0'; // Istanbul/Sariyer
 			
-			printf("double_name is %s\n", double_name);
-			
-			int iterator;
-			for(iterator = 0; iterator < double_name_size; iterator++){
-				if(double_name[iterator] == '/'){
-					double_name[iterator] = '\0';
-					break;
-				}
-			}
-			if (iterator == double_name_size)
-				return -ENOENT;
-			
-			size_t city_name_size = strlen(double_name);
-			char* city_name = (char*) malloc(city_name_size+1);
-			strcpy(city_name, double_name);
-			city_name[city_name_size] = '\0';
-			
-			printf("city_name is %s\n", city_name);
-			
-			size_t district_name_size = strlen(double_name + iterator +1);
-			char* district_name = (char*) malloc(district_name_size+1);
-			strcpy(district_name, double_name + iterator + 1);
-			district_name[district_name_size] = '\0';
-			printf("district_name is %s\n", district_name);
-			*/
 			crow *temp = my_list.head;
 			
 			while(temp != NULL){
@@ -479,27 +497,44 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 					continue;
 				}
 				
-				crow* temp2 = my_list.head;
-				while(temp2 != NULL && temp2!=temp){
-					if(temp2->neighborhood == NULL){
-						temp2 = temp2->next;
+				crow* is_temp = is_added.head;
+				while(is_temp != NULL){
+					if(is_temp->city == NULL){
+						is_temp = is_temp->next;
 						continue;
 					}
-					if(strcmp(temp->neighborhood, temp2->neighborhood) == 0)
+					
+					if(strcmp(temp->city, is_temp->city) == 0 && strcmp(temp->district, is_temp->district) == 0 && strcmp(temp->neighborhood, is_temp->neighborhood) == 0)
 						break;
 						
-					temp2 = temp2->next;
+					is_temp = is_temp->next;
 				}
-				
-				if(/*temp==temp2 && */strcmp(temp->city, city) == 0 && strcmp(temp->district, district) == 0){
+				if(is_temp == NULL){
+					crow* add_temp = (crow*)malloc(sizeof(crow));
+					add_temp->code = (char*) malloc(strlen(temp->code)+1);
+					strcpy(add_temp->code, temp->code);
+					add_temp->neighborhood = (char*) malloc(strlen(temp->neighborhood)+1);
+					strcpy(add_temp->neighborhood, temp->neighborhood);
+					add_temp->city = (char*) malloc(strlen(temp->city)+1);
+					strcpy(add_temp->city, temp->city);
+					add_temp->district = (char*) malloc(strlen(temp->district)+1);
+					strcpy(add_temp->district, temp->district);
+					add_temp->latitude = (char*) malloc(strlen(temp->latitude)+1);
+					strcpy(add_temp->latitude, temp->latitude);
+					add_temp->longitude = (char*) malloc(strlen(temp->longitude)+1);
+					strcpy(add_temp->longitude, temp->longitude);
+					add_temp->next = is_added.head;
+					is_added.head = add_temp;
 					
-					filler(buf, temp->neighborhood, NULL, 0);
+					if(strcmp(temp->city, city) == 0 && strcmp(temp->district, district) == 0){
+						char* file_name = (char*) malloc(strlen(temp->neighborhood) + 5); // 5 for .txt\0
+						strcpy(file_name, temp->neighborhood);
+						strcat(file_name, ".txt");
+						filler(buf, file_name, NULL, 0);
+					}
 				}
 				temp = temp->next;
-			}
-			//free(district_name);
-			//free(city_name);
-			//free(double_name);			
+			}			
 		}
 		else{
 			return -ENOENT;
@@ -543,7 +578,7 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset,
 			
 			char* city;
 			char* district;
-			char* neighborhood;
+			char* file_name;
 			
 			int i = 0;
 			while(token != NULL){
@@ -553,9 +588,12 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset,
 				if(i == 3)
 					district = token;
 				if(i == 4)
-					neighborhood = token;
+					file_name = token;
 				token = strtok(NULL, "/");
 			}
+			
+			//i = 0;
+			char* neighborhood = strtok(file_name, ".");
 			
 			crow *temp = my_list.head;
 			

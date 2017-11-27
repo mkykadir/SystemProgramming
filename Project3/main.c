@@ -34,18 +34,9 @@ typedef struct is_added_list {
 	crow* head;
 } islist;
 
-/*typedef struct slotes {
-	char* sTring;
-	struct slotes* next;
-} slot;*/
-
-/*typedef struct storage_list {
-	slot* head;
-} s_list;*/
 
 int which_column = 0;
 llist my_list;
-//s_list trunk;
 
 void cb1(void *s, size_t len, void* data){
 	crow* current = ((llist*)data)->head;
@@ -256,7 +247,7 @@ static int fuse_getattr(const char* path, struct stat *stbuf){
 			}
 
 			stbuf->st_size = file_length;
-			// need to get length of txt file
+			free(token_path);
 		}
 		else{
 			res = -ENOENT;
@@ -334,6 +325,25 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 				filler(buf, temp->city, NULL, 0);
 			}
 			temp = temp->next;
+		}
+		crow* clean_list = is_added.head;
+		while(clean_list != NULL){
+			if(clean_list->code)
+				free(clean_list->code);
+			if(clean_list->neighborhood)
+				free(clean_list->neighborhood);
+			if(clean_list->city)
+				free(clean_list->city);
+			if(clean_list->district)
+				free(clean_list->district);
+			if(clean_list->latitude)
+				free(clean_list->latitude);
+			if(clean_list->longitude)
+				free(clean_list->longitude);
+			
+			crow* temp = clean_list;
+			clean_list = clean_list->next;
+			free(temp);
 		}
 	}else if(strcmp(path, codes_path) == 0){
 		filler(buf, ".", NULL, 0);
@@ -423,6 +433,25 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 						filler(buf, temp->district, NULL, 0);
 				}
 				temp = temp->next;
+			}
+			crow* clean_list = is_added.head;
+			while(clean_list != NULL){
+				if(clean_list->code)
+					free(clean_list->code);
+				if(clean_list->neighborhood)
+					free(clean_list->neighborhood);
+				if(clean_list->city)
+					free(clean_list->city);
+				if(clean_list->district)
+					free(clean_list->district);
+				if(clean_list->latitude)
+					free(clean_list->latitude);
+				if(clean_list->longitude)
+					free(clean_list->longitude);
+				
+				crow* temp = clean_list;
+				clean_list = clean_list->next;
+				free(temp);
 			}
 			free(city_name);
 		}
@@ -534,7 +563,27 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 					}
 				}
 				temp = temp->next;
-			}			
+			}
+			crow* clean_list = is_added.head;
+			while(clean_list != NULL){
+				if(clean_list->code)
+					free(clean_list->code);
+				if(clean_list->neighborhood)
+					free(clean_list->neighborhood);
+				if(clean_list->city)
+					free(clean_list->city);
+				if(clean_list->district)
+					free(clean_list->district);
+				if(clean_list->latitude)
+					free(clean_list->latitude);
+				if(clean_list->longitude)
+					free(clean_list->longitude);
+				
+				crow* temp = clean_list;
+				clean_list = clean_list->next;
+				free(temp);
+			}
+			free(token_path);			
 		}
 		else{
 			return -ENOENT;

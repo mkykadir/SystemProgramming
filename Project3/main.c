@@ -166,6 +166,27 @@ void csv_data_updater(){
 	csv_free(&p);
 }
 
+void csv_writer(){
+	FILE* fp;
+	fp = fopen("postal-codes.csv", "w");
+	if(!fp)
+		exit(EXIT_FAILURE);
+		
+	crow* temp = my_list.head;
+	while(temp != NULL){
+		if(temp->city == NULL){
+			temp = temp->next;
+			continue;
+		}
+		
+		fprintf(fp, "%s\t%s\t%s\t%s\t%s\t%s\t\n", temp->code, temp->neighborhood, temp->city, temp->district, temp->latitude, temp->longitude);
+		
+		temp = temp->next;
+	}
+	
+	fclose(fp);
+}
+
 static int fuse_getattr(const char* path, struct stat *stbuf){
 	int res = 0;
 	printf("PATH is: %s\n", path); // DEBUG
@@ -263,7 +284,7 @@ static int fuse_getattr(const char* path, struct stat *stbuf){
 	}
 	else if(delim_count == 4){ // /NAMES/Istanbul/Sariyer/Maslak.txt
 		if(strstr(path, names_path) != NULL){ // /NAMES/Istanbul/Sariyer/Maslak.txt
-			stbuf->st_mode = S_IFREG | 0444;
+			stbuf->st_mode = S_IFREG | 0664;
 			stbuf->st_nlink = 1;
 			
 			char* token_path = (char*)malloc(strlen(path)+1);
@@ -888,11 +909,180 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset,
 	
 }
 
+static int fuse_unlink(const char* path)
+{
+	int delim_count = 0;
+	int i;
+	for(i = 0; i < strlen(path); i++){
+		if(path[i] == '/'){
+			delim_count++;
+			printf("DELIM_COUNT is: %d\n", delim_count); // DEBUG
+		}
+	}
+	
+	if(delim_count == 4){ // for NAMES
+		char* token_path = (char*)malloc(strlen(path)+1);
+		strcpy(token_path, path);
+		char* token = strtok(token_path, "/");
+		
+		char* city;
+		char* district;
+		char* file_name;
+		
+		int i = 0;
+		while(token != NULL){
+			i++;
+			if(i == 2)
+				city = token;
+			if(i == 3)
+				district = token;
+			if(i == 4)
+				file_name = token;
+			token = strtok(NULL, "/");
+		}
+		char* neighborhood = strtok(file_name, ".");
+		
+		crow* temp = my_list.head;
+		
+		if(temp != NULL){ // if element is in head!
+			if(temp->city != NULL){
+				if(strcmp(temp->city, city) == 0 
+						&& strcmp(temp->district, district) == 0
+						&& strcmp(temp->neighborhood, neighborhood) == 0){
+					my_list.head = temp->next;
+					free(temp->code);
+					free(temp->city);
+					free(temp->district);
+					free(temp->neighborhood);
+					free(temp->latitude);
+					free(temp->longitude);
+					free(temp);
+					
+					csv_writer();
+					return 0;
+				}
+			}
+		}
+		
+		crow* prev = my_list.head;
+		
+		while(prev->next != NULL){
+			if(prev->next->city == NULL){
+				prev=prev->next;
+				continue;
+			}
+			
+			if(strcmp(prev->next->city, city) != 0 
+					|| strcmp(prev->next->district, district) != 0
+					|| strcmp(prev->next->neighborhood, neighborhood) != 0){
+						
+				prev = prev->next;
+			}else
+				break;
+		}
+		
+		if(prev->next == NULL)
+			return -ENOENT;
+			
+		crow* prev_temp = prev->next;
+		prev->next = prev->next->next;
+		csv_writer();
+		return 0;
+			
+	
+	}
+	
+	return -ENOENT;
+}
+
+static int fuse_rename(const char* from, const char* to)
+{
+	
+	int delim_count = 0;
+	int i;
+	for(i = 0; i < strlen(from); i++){
+		if(from[i] == '/'){
+			delim_count++;
+			printf("DELIM_COUNT is: %d\n", delim_count); // DEBUG
+		}
+	}
+	
+	if(delim_count == 4){ // for NAMES
+		char* token_path = (char*)malloc(strlen(from)+1);
+		char* to_path = (char*)malloc(strlen(to)+1);
+		strcpy(token_path, from);
+		strcpy(to_path, to);
+		printf("from %s to %s\n", from, to);
+		char* token = strtok(token_path, "/");
+		
+		char* city;
+		char* district;
+		char* file_name;
+		
+		int i = 0;
+		while(token != NULL){
+			i++;
+			if(i == 2)
+				city = token;
+			if(i == 3)
+				district = token;
+			if(i == 4)
+				file_name = token;
+			token = strtok(NULL, "/");
+		}
+		char* neighborhood = strtok(file_name, ".");
+		printf("neigh %s\n", neighborhood);
+		
+		char* new_file;
+		char* to_token = strtok(to_path, "/");
+		i = 0;
+		while(to_token != NULL){
+			i++;
+			if(i == 4)
+				new_file = to_token;
+			
+			//printf("to token %s\n", to_token);
+			to_token = strtok(NULL, "/");
+		}
+		printf("new is %s\n", new_file);
+		char* new_neighborhood = strtok(new_file, ".");
+		crow* temp = my_list.head;
+		while(temp != NULL){
+			if(temp->city == NULL){
+				temp=temp->next;
+				continue;
+			}
+			
+			if(strcmp(temp->city, city) == 0 
+					&& strcmp(temp->district, district) == 0
+					&& strcmp(temp->neighborhood, neighborhood) == 0){
+						
+				free(temp->neighborhood);
+				temp->neighborhood = (char*) malloc(strlen(new_neighborhood)+1);
+				strcpy(temp->neighborhood, new_neighborhood);
+				break;
+			}
+			
+			temp=temp->next;
+		}
+		if(temp == NULL)
+			return -ENOENT;
+		
+		csv_writer();
+		return 0;
+			
+	}
+	
+	return -ENOENT;
+}
+
 static struct fuse_operations fuse_oper = {
 	.getattr = fuse_getattr,
 	.readdir = fuse_readdir,
 	.open = fuse_open,
 	.read = fuse_read,
+	.rename = fuse_rename,
+	.unlink = fuse_unlink,
 };
 
 int main(int argc, char* argv[])
